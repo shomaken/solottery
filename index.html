@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SOLOTTERY — Coming Soon</title>
+    <meta name="description" content="SOLOTTERY — Lottery games where you always win: $SLT or points. Countdown to launch." />
+    <meta name="theme-color" content="#0A0A0A" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=Montserrat:wght@400;600;800&family=Orbitron:wght@400;700&display=swap" rel="stylesheet" />
+    <link rel="icon" href="small logo.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+    <main class="page">
+      <header class="brand">
+        <h1 class="title"><img class="title-logo" src="logo-transparent.png" alt="SOLOTTERY" /></h1>
+        <p class="tagline">Always win: <strong>$SLT</strong> or points.</p>
+      </header>
+
+      <section class="intro">
+        <p>
+          Our upcoming platform brings fun Lottery games like <strong>Spin the Wheel</strong> and
+          <strong>Scratch Cards</strong>. Every play wins, either <strong>$SLT</strong> or
+          <strong>points</strong>. Points accumulate toward a seasonal <strong>$SLT airdrop</strong>.
+        </p>
+      </section>
+
+      <section class="countdown" aria-label="Launch countdown">
+        <div class="clock" role="timer" aria-live="polite">
+          <div class="unit">
+            <div class="digits" id="dd">00</div>
+            <div class="label">Days</div>
+          </div>
+          <div class="sep">:</div>
+          <div class="unit">
+            <div class="digits" id="hh">00</div>
+            <div class="label">Hours</div>
+          </div>
+          <div class="sep">:</div>
+          <div class="unit">
+            <div class="digits" id="mm">00</div>
+            <div class="label">Minutes</div>
+          </div>
+          <div class="sep">:</div>
+          <div class="unit">
+            <div class="digits" id="ss">00</div>
+            <div class="label">Seconds</div>
+          </div>
+        </div>
+        <p class="launch-note">Launching in 15 days</p>
+      </section>
+
+      <footer class="footer">
+        <p>© <span id="year"></span> SOLOTTERY. All rights reserved.</p>
+      </footer>
+    </main>
+
+    <script src="script.js"></script>
+  </body>
+  </html>
+
+
