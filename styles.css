@@ -20,7 +20,11 @@ html, body {
               radial-gradient(900px 600px at 20% 80%, #151515 0%, var(--bg) 70%);
   color: var(--text);
   font-family: Montserrat, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  overflow: hidden; /* fixed screen size page */
+  overflow-x: hidden;
+  overflow-y: auto; /* allow scroll on small screens */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
 }
 
 #bg-canvas {
@@ -31,23 +35,52 @@ html, body {
   z-index: 0;
 }
 
+/* Fixed X (Twitter) button */
+.x-btn {
+  position: fixed;
+  top: calc(14px + env(safe-area-inset-top));
+  right: calc(14px + env(safe-area-inset-right));
+  z-index: 10;
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 10px;
+  color: #2b0f0f;
+  background: linear-gradient(180deg, #ffeaa6, #ffd700);
+  text-decoration: none;
+  font-weight: 700;
+  font-family: Oswald, Montserrat, system-ui, sans-serif;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  box-shadow: 0 8px 30px rgba(255, 184, 77, 0.28), 0 2px 8px rgba(0,0,0,0.25);
+  transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+.x-btn:hover { transform: translateY(-1px); filter: saturate(1.05); }
+.x-btn:active { transform: translateY(0); filter: saturate(0.98); }
+
+@media (max-width: 420px) {
+  .x-btn { padding: 10px 14px; }
+}
+
 .page {
   position: relative;
   z-index: 1;
-  height: 100vh;
+  min-height: 100dvh;
   width: 100vw;
-  display: grid;
-  grid-template-rows: auto auto auto auto;
-  align-content: center;
-  justify-items: center;
-  padding: 32px clamp(16px, 4vw, 48px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 12px clamp(16px, 4vw, 48px);
+  padding-top: calc(12px + env(safe-area-inset-top));
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 
 .brand { text-align: center; margin-bottom: 8px; }
 /* Title logo */
 .title-logo {
   display: block;
-  width: min(360px, 42vw);
+  width: clamp(140px, 36vw, 340px);
   height: auto;
   margin: 0 auto 2px;
   filter: drop-shadow(0 6px 26px rgba(255, 215, 0, 0.15)) drop-shadow(0 4px 16px rgba(178, 34, 34, 0.2));
@@ -66,7 +99,7 @@ html, body {
   font-weight: 600;
   font-family: Oswald, Montserrat, system-ui, sans-serif;
   letter-spacing: 0.02em;
-  font-size: clamp(14px, 2vw, 18px);
+  font-size: clamp(12px, 1.8vw, 16px);
 }
 
 .intro {
@@ -97,13 +130,13 @@ html, body {
 .clock .unit { text-align: center; }
 .clock .digits {
   font-family: Orbitron, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: clamp(28px, 7vw, 56px);
+  font-size: clamp(18px, 6vw, 48px);
   line-height: 1;
   padding: 8px 10px;
   color: #2b0f0f;
   background: linear-gradient(180deg, #ffeaa6, #ffd700);
   border-radius: 8px;
-  min-width: 72px;
+  min-width: clamp(44px, 10vw, 72px);
   letter-spacing: 0.08em;
   box-shadow: inset 0 -2px 0 rgba(0,0,0,0.15), 0 8px 30px rgba(255, 184, 77, 0.25);
 }
@@ -116,17 +149,18 @@ html, body {
 }
 .clock .sep {
   font-family: Orbitron, monospace;
-  font-size: clamp(28px, 7vw, 56px);
+  font-size: clamp(18px, 6vw, 48px);
   color: var(--accent);
   transform: translateY(-2px);
 }
 .launch-note { margin-top: 8px; color: var(--muted); }
 
 .footer {
-  margin-top: auto;
+  margin-top: 0;
   text-align: center;
   color: var(--muted);
   opacity: 0.85;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 .footer .bg-logo {
   display: block;
@@ -161,8 +195,23 @@ html, body {
 .clock::after, .intro::after { animation: spin 10s linear infinite; }
 
 /* Responsive small heights */
-@media (max-height: 680px) {
-  .intro { display: none; }
+/* Keep intro visible even on short screens; rely on scrolling + smaller sizes */
+
+/* Mobile responsiveness */
+@media (max-width: 540px) {
+  .page { padding: 20px 16px; align-content: start; }
+  .title-logo { width: clamp(120px, 52vw, 260px); }
+  .intro { margin-top: 4px; padding: 12px 14px; font-size: 14px; }
+  .countdown { margin-top: 10px; }
+  .clock { gap: 8px; padding: 8px 10px; }
+  .clock .digits { font-size: clamp(16px, 7.5vw, 30px); min-width: clamp(38px, 12vw, 52px); padding: 5px 6px; }
+  .clock .sep { font-size: clamp(16px, 7.5vw, 30px); }
+}
+
+@media (max-width: 360px) {
+  .title-logo { width: clamp(100px, 58vw, 200px); }
+  .clock { gap: 6px; }
+  .clock .digits { font-size: clamp(14px, 10vw, 26px); min-width: clamp(32px, 14vw, 44px); }
 }
 
 
