@@ -10,49 +10,35 @@
   // Footer year
   if (dom.year) dom.year.textContent = String(new Date().getFullYear());
 
-  // Typewriter effect: loops "Coming soon" forever
+  // Typewriter effect: type "Coming soon" once, slowly after load
   (function setupTypewriter() {
     if (!dom.typing) return;
     const phrase = 'Coming soon';
-    const typeDelayMs = 120;
-    const holdAfterTypeMs = 1000;
-    const deleteDelayMs = 70;
-    const holdAfterDeleteMs = 600;
+    const typeDelayMs = 160; // slower typing
 
-    let index = 0;
-    let direction = 1; // 1 typing, -1 deleting
+    let index = 1; // start from first character
 
-    function tick() {
+    function typeNext() {
       if (!dom.typing) return;
       dom.typing.textContent = phrase.slice(0, index);
-
-      if (direction === 1) {
-        if (index < phrase.length) {
-          index++;
-          setTimeout(tick, typeDelayMs);
-        } else {
-          direction = -1;
-          setTimeout(tick, holdAfterTypeMs);
-        }
-      } else {
-        if (index > 0) {
-          index--;
-          setTimeout(tick, deleteDelayMs);
-        } else {
-          direction = 1;
-          setTimeout(tick, holdAfterDeleteMs);
-        }
+      if (index < phrase.length) {
+        index++;
+        setTimeout(typeNext, typeDelayMs);
       }
     }
-    tick();
+
+    // slight delay after page load before typing starts
+    setTimeout(typeNext, 400);
   })();
 
   // Interactive canvas background: floating tokens, wheel slices, sparkles
   const canvas = dom.canvas;
   const ctx = canvas.getContext('2d', { alpha: true });
-  let width = 0, height = 0, dpr = Math.min(2, window.devicePixelRatio || 1);
+  let width = 0, height = 0, dpr = Math.min(1.5, window.devicePixelRatio || 1);
   let paused = false;
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const targetFps = reduceMotion ? 30 : 45;
+  const frameInterval = 1000 / targetFps;
 
   function resize() {
     width = window.innerWidth;
@@ -103,17 +89,18 @@
     };
   }
 
-  const tokenCount = reduceMotion ? 14 : 28;
+  const tokenCount = reduceMotion ? 10 : 18;
   for (let i = 0; i < tokenCount; i++) tokens.push(createToken());
-  const glowCount = reduceMotion ? 2 : 4;
-  for (let i = 0; i < glowCount; i++) glows.push({ x: rng(0, 1), y: rng(0, 1), r: rng(120, 220), a: rng(0.05, 0.12) });
+  const glowCount = reduceMotion ? 1 : 2;
+  for (let i = 0; i < glowCount; i++) glows.push({ x: rng(0, 1), y: rng(0, 1), r: rng(140, 220), a: rng(0.04, 0.09) });
 
   let mouseX = width / 2, mouseY = height / 2, repel = 0;
   window.addEventListener('pointermove', (e) => {
     mouseX = e.clientX; mouseY = e.clientY; repel = 1;
   });
   window.addEventListener('pointerdown', (e) => {
-    for (let i = 0; i < 20; i++) sparkles.push(createSparkle(e.clientX, e.clientY));
+    const count = reduceMotion ? 6 : 12;
+    for (let i = 0; i < count; i++) sparkles.push(createSparkle(e.clientX, e.clientY));
   });
 
   function drawToken(t) {
@@ -121,11 +108,9 @@
     ctx.translate(t.x, t.y);
     ctx.rotate(t.rot);
 
-    // Depth-of-field via subtle blur and alpha
+    // Depth-of-field via alpha only (disable blur for performance)
     const depthClamped = Math.max(0.6, Math.min(1.4, t.depth || 1));
-    const depthAlpha = 0.9 - Math.abs(depthClamped - 1) * 0.35;
-    const blurPx = (depthClamped > 1 ? (depthClamped - 1) * 3 : (1 - depthClamped) * 2);
-    if ('filter' in ctx) ctx.filter = `blur(${blurPx.toFixed(2)}px)`;
+    const depthAlpha = 0.92 - Math.abs(depthClamped - 1) * 0.38;
     ctx.globalAlpha = depthAlpha;
 
     // 3D coin body with beveled edge
@@ -209,7 +194,9 @@
 
   let lastTs = 0;
   function frame(ts) {
-    const dt = Math.min(33, ts - lastTs || 16) / 16.67;
+    const elapsed = ts - lastTs;
+    if (elapsed < frameInterval) { requestAnimationFrame(loop); return; }
+    const dt = Math.min(33, elapsed || 16) / 16.67;
     lastTs = ts;
     ctx.clearRect(0, 0, width, height);
 
@@ -228,10 +215,12 @@
 
     // wheel ghosts
     const r = Math.min(width, height) * 0.4;
-    wheelAngle1 += (reduceMotion ? 0.006 : 0.01) * dt; // clockwise
-    wheelAngle2 -= (reduceMotion ? 0.005 : 0.008) * dt; // counter-clockwise
-    drawWheelGhost(width * 0.25, height * 0.25, r * 0.6, wheelAngle1);
-    drawWheelGhost(width * 0.75, height * 0.75, r * 0.5, wheelAngle2);
+    if (!reduceMotion) {
+      wheelAngle1 += 0.01 * dt; // clockwise
+      wheelAngle2 -= 0.008 * dt; // counter-clockwise
+      drawWheelGhost(width * 0.25, height * 0.25, r * 0.6, wheelAngle1);
+      drawWheelGhost(width * 0.75, height * 0.75, r * 0.5, wheelAngle2);
+    }
 
     // update & draw tokens
     for (const t of tokens) {
@@ -244,21 +233,23 @@
         t.vx += (dx / d) * 0.06;
         t.vy += (dy / d) * 0.06;
       }
-      t.x += t.vx * dt * 1.15;
-      t.y += t.vy * dt * 1.15;
-      if (!reduceMotion) t.rot += t.vr * dt;
+      t.x += t.vx * dt * 1.05;
+      t.y += t.vy * dt * 1.05;
+      if (!reduceMotion) t.rot += t.vr * dt * 0.9;
       if (t.x < -60) t.x = width + 60; if (t.x > width + 60) t.x = -60;
       if (t.y < -60) t.y = height + 60; if (t.y > height + 60) t.y = -60;
       drawToken(t);
     }
     repel *= 0.98;
 
-    // sparkles
+    // sparkles (limit total)
+    const maxSparkles = reduceMotion ? 30 : 60;
+    if (sparkles.length > maxSparkles) sparkles.splice(0, sparkles.length - maxSparkles);
     for (let i = sparkles.length - 1; i >= 0; i--) {
       const s = sparkles[i];
       s.age += (dt / 60);
-      s.x += s.vx * dt * 3;
-      s.y += s.vy * dt * 3;
+      s.x += s.vx * dt * 2.4;
+      s.y += s.vy * dt * 2.4;
       const alpha = Math.max(0, 1 - s.age / s.life);
       if (alpha <= 0) { sparkles.splice(i, 1); continue; }
       ctx.save();
