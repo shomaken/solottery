@@ -1,86 +1,58 @@
-/* Countdown + interactive lottery-themed canvas background */
+/* Typewriter + interactive lottery-themed canvas background */
 (function () {
-  const DAY_MS = 24 * 60 * 60 * 1000;
-  const LAUNCH_DURATION_DAYS = 15;
-  const STORAGE_KEY = 'solottery_launch_ts_v1';
-
   const dom = {
-    dd: document.getElementById('dd'),
-    hh: document.getElementById('hh'),
-    mm: document.getElementById('mm'),
-    ss: document.getElementById('ss'),
+    typing: document.getElementById('typing'),
+    caret: document.querySelector('.caret'),
     year: document.getElementById('year'),
-    note: document.querySelector('.launch-note'),
     canvas: document.getElementById('bg-canvas')
   };
 
   // Footer year
   if (dom.year) dom.year.textContent = String(new Date().getFullYear());
 
-  // No video/logo reveal anymore; using transparent logo in title only
+  // Typewriter effect: loops "Coming soon" forever
+  (function setupTypewriter() {
+    if (!dom.typing) return;
+    const phrase = 'Coming soon';
+    const typeDelayMs = 120;
+    const holdAfterTypeMs = 1000;
+    const deleteDelayMs = 70;
+    const holdAfterDeleteMs = 600;
 
-  // Countdown: persist launch timestamp from first visit
-  try {
-    const now = Date.now();
-    let launchTs = Number(localStorage.getItem(STORAGE_KEY));
-    if (!Number.isFinite(launchTs) || launchTs < now) {
-      launchTs = now + LAUNCH_DURATION_DAYS * DAY_MS;
-      localStorage.setItem(STORAGE_KEY, String(launchTs));
-    }
+    let index = 0;
+    let direction = 1; // 1 typing, -1 deleting
 
-    function pad(n) { return n.toString().padStart(2, '0'); }
     function tick() {
-      const nowTs = Date.now();
-      const t = launchTs - nowTs;
-      if (t <= 0) {
-        dom.dd.textContent = '00';
-        dom.hh.textContent = '00';
-        dom.mm.textContent = '00';
-        dom.ss.textContent = '00';
-        if (dom.note) dom.note.textContent = 'Launching today';
-        return;
+      if (!dom.typing) return;
+      dom.typing.textContent = phrase.slice(0, index);
+
+      if (direction === 1) {
+        if (index < phrase.length) {
+          index++;
+          setTimeout(tick, typeDelayMs);
+        } else {
+          direction = -1;
+          setTimeout(tick, holdAfterTypeMs);
+        }
+      } else {
+        if (index > 0) {
+          index--;
+          setTimeout(tick, deleteDelayMs);
+        } else {
+          direction = 1;
+          setTimeout(tick, holdAfterDeleteMs);
+        }
       }
-      const totalSeconds = Math.floor(t / 1000);
-      const days = Math.floor(totalSeconds / (24 * 3600));
-      const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      dom.dd.textContent = pad(days);
-      dom.hh.textContent = pad(hours);
-      dom.mm.textContent = pad(minutes);
-      dom.ss.textContent = pad(seconds);
-
-      // Update launch note using ceil to reflect whole days remaining (15 → 14 → 13 ...)
-      const daysLeft = Math.max(0, Math.ceil(t / DAY_MS));
-      if (dom.note) dom.note.textContent = `Launching in ${daysLeft} day${daysLeft === 1 ? '' : 's'}`;
     }
     tick();
-    setInterval(tick, 1000);
-  } catch (_) {
-    // If localStorage fails, fall back to non-persistent countdown
-    const fallbackEnd = Date.now() + LAUNCH_DURATION_DAYS * DAY_MS;
-    function pad(n) { return n.toString().padStart(2, '0'); }
-    function tick() {
-      const t = fallbackEnd - Date.now();
-      if (t <= 0) return;
-      const s = Math.floor(t / 1000);
-      const d = Math.floor(s / (24 * 3600));
-      const h = Math.floor((s % (24 * 3600)) / 3600);
-      const m = Math.floor((s % 3600) / 60);
-      const ss = s % 60;
-      dom.dd.textContent = pad(d);
-      dom.hh.textContent = pad(h);
-      dom.mm.textContent = pad(m);
-      dom.ss.textContent = pad(ss);
-    }
-    tick();
-    setInterval(tick, 1000);
-  }
+  })();
 
   // Interactive canvas background: floating tokens, wheel slices, sparkles
   const canvas = dom.canvas;
   const ctx = canvas.getContext('2d', { alpha: true });
   let width = 0, height = 0, dpr = Math.min(2, window.devicePixelRatio || 1);
+  let paused = false;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   function resize() {
     width = window.innerWidth;
@@ -100,25 +72,23 @@
 
   const tokens = [];
   const sparkles = [];
+  const glows = [];
   let wheelAngle1 = 0;
   let wheelAngle2 = 0;
 
   function createToken() {
-    const size = rng(18, 36);
-    // Palette hues: gold ~50, deep red ~0
-    const isGold = Math.random() < 0.6;
-    const hue = isGold ? 50 : 0;
+    const size = rng(22, 44);
+    const face = Math.random() < 0.65 ? 'gold' : 'ruby';
     return {
-      x: rng(-50, width + 50),
-      y: rng(-50, height + 50),
+      x: rng(-60, width + 60),
+      y: rng(-60, height + 60),
       r: size / 2,
-      vx: rng(-0.2, 0.2),
-      vy: rng(-0.15, 0.15),
+      depth: rng(0.6, 1.4),
+      vx: rng(-0.18, 0.18),
+      vy: rng(-0.14, 0.14),
       rot: rng(0, TAU),
-      vr: rng(-0.01, 0.01),
-      hue,
-      sat: isGold ? 100 : 80,
-      light: isGold ? 55 : 45
+      vr: rng(-0.012, 0.012),
+      face
     };
   }
 
@@ -133,7 +103,10 @@
     };
   }
 
-  for (let i = 0; i < 24; i++) tokens.push(createToken());
+  const tokenCount = reduceMotion ? 14 : 28;
+  for (let i = 0; i < tokenCount; i++) tokens.push(createToken());
+  const glowCount = reduceMotion ? 2 : 4;
+  for (let i = 0; i < glowCount; i++) glows.push({ x: rng(0, 1), y: rng(0, 1), r: rng(120, 220), a: rng(0.05, 0.12) });
 
   let mouseX = width / 2, mouseY = height / 2, repel = 0;
   window.addEventListener('pointermove', (e) => {
@@ -147,28 +120,73 @@
     ctx.save();
     ctx.translate(t.x, t.y);
     ctx.rotate(t.rot);
-    // token base
-    const grad = ctx.createRadialGradient(0, 0, 2, 0, 0, t.r);
-    const colorMain = `hsl(${t.hue} ${t.sat}% ${t.light}%)`;
-    const colorEdge = `hsl(${t.hue} ${Math.max(60, t.sat - 20)}% ${Math.max(28, t.light - 20)}%)`;
-    grad.addColorStop(0, colorMain);
-    grad.addColorStop(1, colorEdge);
-    ctx.fillStyle = grad;
+
+    // Depth-of-field via subtle blur and alpha
+    const depthClamped = Math.max(0.6, Math.min(1.4, t.depth || 1));
+    const depthAlpha = 0.9 - Math.abs(depthClamped - 1) * 0.35;
+    const blurPx = (depthClamped > 1 ? (depthClamped - 1) * 3 : (1 - depthClamped) * 2);
+    if ('filter' in ctx) ctx.filter = `blur(${blurPx.toFixed(2)}px)`;
+    ctx.globalAlpha = depthAlpha;
+
+    // 3D coin body with beveled edge
+    const radius = t.r;
+    const edgeWidth = Math.max(2, radius * 0.18);
+    // Edge ring
+    const edgeGrad = ctx.createLinearGradient(-radius, 0, radius, 0);
+    if (t.face === 'gold') {
+      edgeGrad.addColorStop(0, '#8a6b00');
+      edgeGrad.addColorStop(0.5, '#ffd700');
+      edgeGrad.addColorStop(1, '#6b5200');
+    } else {
+      edgeGrad.addColorStop(0, '#5c0a0a');
+      edgeGrad.addColorStop(0.5, '#d42a2a');
+      edgeGrad.addColorStop(1, '#3d0606');
+    }
+    ctx.fillStyle = edgeGrad;
     ctx.beginPath();
-    ctx.arc(0, 0, t.r, 0, TAU);
+    ctx.arc(0, 0, radius, 0, TAU);
+    ctx.arc(0, 0, radius - edgeWidth, 0, TAU, true);
+    ctx.closePath();
     ctx.fill();
 
-    // currency mark
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+    // Face glossy radial
+    const faceGrad = ctx.createRadialGradient(-radius * 0.3, -radius * 0.3, radius * 0.2, 0, 0, radius - edgeWidth);
+    if (t.face === 'gold') {
+      faceGrad.addColorStop(0, '#fff2b3');
+      faceGrad.addColorStop(0.5, '#ffd700');
+      faceGrad.addColorStop(1, '#8a6b00');
+    } else {
+      faceGrad.addColorStop(0, '#ffc9c9');
+      faceGrad.addColorStop(0.5, '#d42a2a');
+      faceGrad.addColorStop(1, '#5c0a0a');
+    }
+    ctx.fillStyle = faceGrad;
     ctx.beginPath();
-    ctx.arc(0, 0, t.r * 0.65, 0, TAU);
-    ctx.stroke();
-    ctx.font = `${Math.floor(t.r * 0.9)}px Orbitron, Inter, sans-serif`;
+    ctx.arc(0, 0, radius - edgeWidth, 0, TAU);
+    ctx.fill();
+
+    // Engraved mark
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.font = `${Math.floor(radius * 0.9)}px Cinzel, Playfair Display, serif`;
     ctx.fillText('SLT', 0, 0);
+    ctx.globalCompositeOperation = 'source-over';
+
+    // Specular highlight
+    ctx.beginPath();
+    ctx.ellipse(-radius * 0.25, -radius * 0.35, radius * 0.6, radius * 0.25, -0.5, 0, TAU);
+    const sheen = ctx.createRadialGradient(-radius * 0.25, -radius * 0.35, radius * 0.05, -radius * 0.25, -radius * 0.35, radius * 0.4);
+    sheen.addColorStop(0, 'rgba(255,255,255,0.35)');
+    sheen.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = sheen;
+    ctx.fill();
+
+    // Reset filters
+    if ('filter' in ctx) ctx.filter = 'none';
+    ctx.globalAlpha = 1;
+
     ctx.restore();
   }
 
@@ -176,7 +194,7 @@
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(angle || 0);
-    ctx.globalAlpha = 0.08;
+    ctx.globalAlpha = reduceMotion ? 0.05 : 0.08;
     const segments = 8;
     for (let i = 0; i < segments; i++) {
       ctx.beginPath();
@@ -195,10 +213,23 @@
     lastTs = ts;
     ctx.clearRect(0, 0, width, height);
 
+    // background soft glows
+    for (const g of glows) {
+      const gx = g.x * width;
+      const gy = g.y * height;
+      const grad = ctx.createRadialGradient(gx, gy, 0, gx, gy, g.r);
+      grad.addColorStop(0, `rgba(255, 215, 0, ${g.a})`);
+      grad.addColorStop(1, 'rgba(255, 215, 0, 0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(gx, gy, g.r, 0, TAU);
+      ctx.fill();
+    }
+
     // wheel ghosts
     const r = Math.min(width, height) * 0.4;
-    wheelAngle1 += 0.01 * dt; // clockwise
-    wheelAngle2 -= 0.008 * dt; // counter-clockwise
+    wheelAngle1 += (reduceMotion ? 0.006 : 0.01) * dt; // clockwise
+    wheelAngle2 -= (reduceMotion ? 0.005 : 0.008) * dt; // counter-clockwise
     drawWheelGhost(width * 0.25, height * 0.25, r * 0.6, wheelAngle1);
     drawWheelGhost(width * 0.75, height * 0.75, r * 0.5, wheelAngle2);
 
@@ -207,15 +238,15 @@
       const dx = t.x - mouseX;
       const dy = t.y - mouseY;
       const dist2 = dx * dx + dy * dy;
-      const radius = 120;
+      const radius = 140;
       if (repel && dist2 < radius * radius) {
         const d = Math.sqrt(Math.max(1, dist2));
         t.vx += (dx / d) * 0.06;
         t.vy += (dy / d) * 0.06;
       }
-      t.x += t.vx * dt * 1.2;
-      t.y += t.vy * dt * 1.2;
-      t.rot += t.vr * dt;
+      t.x += t.vx * dt * 1.15;
+      t.y += t.vy * dt * 1.15;
+      if (!reduceMotion) t.rot += t.vr * dt;
       if (t.x < -60) t.x = width + 60; if (t.x > width + 60) t.x = -60;
       if (t.y < -60) t.y = height + 60; if (t.y > height + 60) t.y = -60;
       drawToken(t);
@@ -240,9 +271,40 @@
       ctx.restore();
     }
 
-    requestAnimationFrame(frame);
+    requestAnimationFrame(loop);
   }
-  requestAnimationFrame(frame);
+  function loop(ts) {
+    if (!paused) frame(ts || 0);
+  }
+  requestAnimationFrame(loop);
+
+  // Pause on tab hidden for performance
+  document.addEventListener('visibilitychange', () => {
+    paused = document.hidden;
+  });
+
+  // Interactive X button tilt and sheen
+  (function setupInteractiveButton() {
+    const btn = document.querySelector('.x-btn');
+    if (!btn) return;
+    const update = (e) => {
+      const rect = btn.getBoundingClientRect();
+      const px = (e.clientX - rect.left) / rect.width;
+      const py = (e.clientY - rect.top) / rect.height;
+      const rx = (0.5 - py) * 10; // rotateX
+      const ry = (px - 0.5) * 10; // rotateY
+      btn.style.setProperty('--rx', rx.toFixed(2) + 'deg');
+      btn.style.setProperty('--ry', ry.toFixed(2) + 'deg');
+      btn.style.setProperty('--mx', (px * 100).toFixed(1) + '%');
+    };
+    btn.addEventListener('pointermove', update);
+    btn.addEventListener('pointerleave', () => {
+      btn.style.setProperty('--rx', '0deg');
+      btn.style.setProperty('--ry', '0deg');
+    });
+    btn.addEventListener('pointerdown', () => btn.style.setProperty('--press', '0.98'));
+    btn.addEventListener('pointerup', () => btn.style.setProperty('--press', '1'));
+  })();
 })();
 
 
